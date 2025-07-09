@@ -1,4 +1,5 @@
 // components/PolicyManager.jsx
+"use client"
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { FaEdit, FaTrash, FaSave, FaPlus, FaLink, FaGlobe, FaBell, FaInfoCircle, FaToggleOn, FaToggleOff, FaCheck, FaTimes } from "react-icons/fa";
