@@ -26,7 +26,7 @@ import PrivacyPage from './components/legal/page';
 import CertificatesPage from './components/Certificates/page';
 import AcademicDashboard from './components/Academic/page';
 import FinancialDashboard from '../DashBoardFinicial/components/financial/page';
-import NotificationsDashboard from './components/SMS/page';
+import NotificationSystem from './components/SMS/page';
 import EmailTemplatesPage from './Email/page';
 import AnalyticsDashboard from './components/CRM/page';
 import LicenseDashboard from './components/Saas/page';
@@ -39,6 +39,7 @@ import TasksPage from './components/Support/page';
 import InternalCommunication from './components/voip/InternalCommunication';
 import VoipDashboard from './components/voip/page';
 import UsersPage from '../DashBoardHR/components/managmentTeam/page';
+import StatsOverview from './StatsOverview';
 
 const AdminDashboard = () => {
   // State management
@@ -149,45 +150,16 @@ const AdminDashboard = () => {
         />
 
         <main className="flex-1 mr-64 p-8">
-          {/* Dashboard Section */}
-          {activeSection === 'dashboard' && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                <SummaryCard
-                  title="إجمالي المستخدمين"
-                  value={stats.totalUsers || 0}
-                  icon="👥"
-                  trend="up"
-                />
-                <SummaryCard
-                  title="المستخدمين النشطين"
-                  value={stats.activeUsers || 0}
-                  icon="✅"
-                  trend="up"
-                />
-                <SummaryCard
-                  title="عدد المدربين"
-                  value={stats.trainers || 0}
-                  icon="🎓"
-                  trend="neutral"
-                />
-                <SummaryCard
-                  title="عدد المتدربين"
-                  value={stats.trainees || 0}
-                  icon="🧑💻"
-                  trend="up"
-                />
-              </div>
-
-              <DashboardStats data={statsData} />
-
-              <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
-                <h3 className="text-lg font-semibold mb-4">أحدث الأنشطة</h3>
-                <ActivityLog logs={activityLogs.slice(0, 5)} />
-              </div>
-            </>
-          )}
-
+         
+ {activeSection === 'dashboard' && (
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <StatsOverview
+               
+              />
+        
+            </div>
+            
+          ) }
           
 
           {/* Content Section */}
@@ -245,9 +217,7 @@ const AdminDashboard = () => {
                 {activeSection === 'ads' && <AdminAdsPage   />}
                 {activeSection === 'legal' && <PrivacyPage   />}
                 {activeSection === 'certif' && <CertificatesPage   />}
-                {activeSection === 'certif' && <AcademicDashboard   />}
-                {activeSection === 'email' && <NotificationsDashboard   />}
-                {activeSection === 'email' && <EmailTemplatesPage   />}
+                {activeSection === 'email' && <NotificationSystem   />}
                 {activeSection === 'crm' && <AnalyticsDashboard   />}
                 {activeSection === 'saas' && <LicenseDashboard   />}
                 {activeSection === 'social' && <SosialDashboard   />}

@@ -1,10 +1,11 @@
 "use client";
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FiUser, FiBell, FiSettings, FiMessageSquare, FiCreditCard, FiClock, FiDollarSign, FiGlobe, FiEdit, FiHelpCircle, FiLogOut, FiBriefcase } from 'react-icons/fi';
-import { useDispatch } from 'react-redux';
-import { logout } from '@/store/slices/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { checkAuth, logout } from '@/store/slices/authSlice';
+
 // نظام الألوان الجديد
 const colors = {
   blue: '#008DCB',
@@ -16,8 +17,14 @@ const colors = {
 };
 
 const List = () => {
-    const dispatch = useDispatch();
-const handleLogout = () => {
+  const dispatch = useDispatch();
+  const { user, isLoading, error } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    dispatch(checkAuth());
+  }, [dispatch]);
+
+  const handleLogout = () => {
     dispatch(logout());
   };
   // تحسين تأثيرات الحركة
@@ -46,7 +53,7 @@ const handleLogout = () => {
     visible: { opacity: 1, x: 0 }
   };
 
-  return (
+    return (
     <motion.div 
       className="w-72 shadow-xl rounded-xl overflow-hidden"
       style={{
@@ -69,13 +76,13 @@ const handleLogout = () => {
             className="font-bold text-right text-lg mb-1"
             style={{ color: colors.black }}
           >
-            محمد نور طبيب
+            {isLoading ? "جاري التحميل..." : user?.username || "المستخدم"}
           </h3>
           <p 
             className="text-sm text-right"
             style={{ color: colors.gray }}
           >
-            mohammednourteby@g...
+            {isLoading ? "..." : user?.email || "example@example.com"}
           </p>
         </motion.div>
       </div>

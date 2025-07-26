@@ -1,439 +1,433 @@
-"use client"
-import React, { useState, useEffect } from 'react';
-import { EnvelopeIcon, MagnifyingGlassIcon, FunnelIcon, ChartBarIcon, UserCircleIcon, CalendarIcon, ChevronUpDownIcon, CheckIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
-import { toast, Toaster } from 'react-hot-toast';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 
-// نظام الألوان المحدد
-const COLORS = {
-  blue: '#008DCB',
-  black: '#0D1012',
-  gray: '#999999',
-  red: '#E2101E',
-  white: '#FFFFFF',
-  yellow: '#F9D011'
-};
-
-// بيانات وهمية موسعة
-const mockStudents = [
-  {
-    id: 1,
-    name: 'محمد أحمد',
-    email: 'mohamed@example.com',
-    courses: ['برمجة', 'تصميم'],
-    registrationDate: '2024-01-15',
-    lastActivity: '2024-03-20',
-    status: 'active',
-    avatar: 'https://randomuser.me/api/portraits/men/1.jpg'
-  },
-  {
-    id: 2,
-    name: 'أسماء علي',
-    email: 'asma@example.com',
-    courses: ['تسويق'],
-    registrationDate: '2024-02-01',
-    lastActivity: '2024-03-18',
-    status: 'inactive',
-    avatar: 'https://randomuser.me/api/portraits/women/2.jpg'
-  },
-  {
-    id: 3,
-    name: 'علي حسن',
-    email: 'ali@example.com',
-    courses: ['تصميم', 'تسويق'],
-    registrationDate: '2024-03-01',
-    lastActivity: '2024-03-25',
-    status: 'active',
-    avatar: 'https://randomuser.me/api/portraits/men/3.jpg'
-  }
-];
-
-const StudentMarketingDashboard = () => {
-  const [students] = useState(mockStudents);
-  const [filteredStudents, setFilteredStudents] = useState(mockStudents);
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [filters, setFilters] = useState({
-    searchQuery: '',
-    course: '',
-    startDate: '',
-    endDate: '',
-    activity: ''
-  });
+const NotificationSystem = () => {
+  // حالات المكون
+  const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [message, setMessage] = useState('');
+  const [type, setType] = useState('general');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
   const [emailContent, setEmailContent] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => applyFilters(), 300);
-    return () => clearTimeout(timeoutId);
-  }, [filters]);
-
-  const applyFilters = () => {
-    let result = [...students];
-
-    if (filters.searchQuery) {
-      result = result.filter(s => 
-        s.name.toLowerCase().includes(filters.searchQuery.toLowerCase()) || 
-        s.email.toLowerCase().includes(filters.searchQuery.toLowerCase())
+  // جلب المستخدمين من Strapi
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // بناء استعلام Strapi باستخدام qs
+      const qs = require('qs');
+      const query = qs.stringify(
+        {
+          // فلترة المستخدمين بالدور "authenticated"
+          filters: {
+            role: {
+              type: {
+                $eq: 'authenticated'
+              }
+            }
+          },
+          // تحديد الحقول المراد استردادها
+          fields: ['username', 'email'],
+          // استرداد العلاقات
+          populate: {
+            role: {
+              fields: ['type']
+            }
+          }
+        },
+        {
+          encodeValuesOnly: true
+        }
       );
+      
+      // جلب البيانات من Strapi
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/users?${query}`);
+      
+      // تحديث حالة المستخدمين
+      setUsers(response.data);
+      setLoading(false);
+    } catch (err) {
+      console.error('فشل في جلب المستخدمين:', err);
+      setError('فشل في تحميل المستخدمين. يرجى المحاولة مرة أخرى.');
+      setLoading(false);
     }
-
-    if (filters.course) {
-      result = result.filter(s => s.courses.includes(filters.course));
-    }
-
-    if (filters.startDate && filters.endDate) {
-      result = result.filter(s => 
-        s.registrationDate >= filters.startDate && 
-        s.registrationDate <= filters.endDate
-      );
-    }
-
-    if (filters.activity) {
-      result = result.filter(s => s.status === filters.activity);
-    }
-
-    setFilteredStudents(result);
   };
 
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-
-    const sortedData = [...filteredStudents].sort((a, b) => {
-      if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
-      if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredStudents(sortedData);
+  // معالجة تغيير حالة اختيار المستخدم
+  const handleUserSelect = (userId) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId) 
+        : [...prev, userId]
+    );
   };
 
-  const handleSendEmails = async () => {
-    if (selectedRows.length === 0) {
-      toast.error('الرجاء تحديد مستخدمين أولاً');
+  // معالجة إرسال الإشعار
+  const handleSendNotification = async (e) => {
+    e.preventDefault();
+    
+    if (!message || selectedUsers.length === 0) {
+      setError('يرجى إدخال رسالة واختيار مستخدمين على الأقل');
       return;
     }
 
-    const loadingToast = toast.loading('جاري إرسال الرسائل...');
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success(`تم الإرسال بنجاح إلى ${selectedRows.length} مستخدم`, { id: loadingToast });
+      setSuccessMessage('');
+      setError(null);
+      
+      // إرسال الإشعار إلى المستخدمين المختارين
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/notifications`,
+        {
+          data: {
+            message,
+            type,
+            sendEmail, // خيار إرسال البريد
+            emailContent, // محتوى البريد
+            users_permissions_users: selectedUsers // مصفوفة من المعرفات
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+      
+      // إعادة تعيين النموذج
+      setMessage('');
+      setType('general');
+      setSendEmail(false);
       setEmailContent('');
-      setSelectedRows([]);
-    } catch (error) {
-      toast.error('حدث خطأ أثناء الإرسال', { id: loadingToast });
+      setSelectedUsers([]);
+      
+      // رسالة النجاح
+      const baseMessage = `تم إرسال الإشعار بنجاح إلى ${selectedUsers.length} مستخدمين`;
+      const emailMessage = sendEmail ? ' وتم إرسال البريد الإلكتروني' : '';
+      setSuccessMessage(baseMessage + emailMessage);
+    } catch (err) {
+      console.error('فشل في إرسال الإشعار:', err);
+      
+      // معالجة الأخطاء بدقة
+      if (err.response) {
+        console.error('بيانات الخطأ:', err.response.data);
+        setError(`فشل في إرسال الإشعار: ${err.response.data.error?.message || 'طلبية خاطئة'}`);
+      } else if (err.request) {
+        console.error('لم يتم استلام استجابة من الخادم');
+        setError('فشل في الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.');
+      } else {
+        console.error('خطأ في إعداد الطلبية:', err.message);
+        setError('فشل في إرسال الإشعار. يرجى المحاولة مرة أخرى.');
+      }
     }
   };
 
-  const exportToCSV = () => {
-    const csvContent = [
-      'الاسم,الإيميل,الدورات,تاريخ التسجيل,آخر نشاط',
-      ...filteredStudents.map(s => 
-        `${s.name},${s.email},"${s.courses.join(',')}",${s.registrationDate},${s.lastActivity}`
-      )
-    ].join('\n');
+  // تحميل المستخدمين عند تحميل المكون
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'students.csv';
-    a.click();
-    toast.success('تم تصدير الملف بنجاح');
-  };
-
-  const TableHeader = ({ label, sortKey }) => (
-    <th 
-      className="px-6 py-4 text-right cursor-pointer hover:bg-gray-50 transition-colors"
-      onClick={() => handleSort(sortKey)}
-      style={{ color: COLORS.black }}
-    >
-      <div className="flex items-center justify-end gap-2">
-        {label}
-        <ChevronUpDownIcon className="w-4 h-4" style={{ color: COLORS.gray }} />
-        {sortConfig.key === sortKey && (
-          <span style={{ color: COLORS.blue }}>
-            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
+  // عرض حالة التحميل
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8 min-h-[50vh]">
+        <div 
+          className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" 
+          style={{ borderColor: '#008DCB' }}
+        ></div>
+        <span className="ml-3 text-[#0D1012]">جاري تحميل المستخدمين...</span>
       </div>
-    </th>
-  );
+    );
+  }
 
   return (
-    <div className="min-h-screen p-6" style={{ backgroundColor: COLORS.white }}>
-      <Toaster position="top-center" toastOptions={{ style: { backgroundColor: COLORS.white, color: COLORS.black } }} />
-
-      {/* الهيدر */}
-      <header className="p-4 mb-8 rounded-xl shadow-lg" style={{ backgroundColor: COLORS.blue }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ChartBarIcon className="w-8 h-8" style={{ color: COLORS.white }} />
-            <h1 className="text-2xl font-bold" style={{ color: COLORS.white }}>لوحة التحكم التسويقية</h1>
-          </div>
-          <div className="flex items-center gap-4" style={{ color: COLORS.white }}>
-            <UserCircleIcon className="w-6 h-6" />
-            <span>المسؤول</span>
-          </div>
+    <div className="container mx-auto p-4 max-w-6xl">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div 
+          className="py-6 px-4 md:px-8"
+          style={{ background: 'linear-gradient(90deg, #008DCB 0%, #006A9E 100%)' }}
+        >
+          <h1 className="text-2xl md:text-3xl font-bold text-center text-white">
+            نظام إدارة الإشعارات
+          </h1>
         </div>
-      </header>
-
-      {/* منطقة الفلترة */}
-      <section className="p-6 mb-8 rounded-xl shadow-md" style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.gray}` }}>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <MagnifyingGlassIcon className="w-5 h-5 absolute right-3 top-3" style={{ color: COLORS.gray }} />
-            <input
-              type="text"
-              placeholder="بحث..."
-              className="w-full pl-4 pr-10 py-3 rounded-lg border focus:ring-2"
+        
+        <div className="p-4 md:p-8">
+          {/* رسالة الخطأ */}
+          {error && (
+            <div 
+              className="mb-6 p-4 rounded-lg border-l-4 flex items-start"
               style={{ 
-                borderColor: COLORS.gray,
-                color: COLORS.black,
-                backgroundColor: COLORS.white
+                backgroundColor: 'rgba(226, 16, 30, 0.08)', 
+                borderColor: '#E2101E',
+                borderLeftWidth: '4px'
               }}
-              value={filters.searchQuery}
-              onChange={(e) => setFilters({...filters, searchQuery: e.target.value})}
-            />
-          </div>
-
-          <select 
-            className="py-3 px-4 rounded-lg border"
-            style={{ 
-              borderColor: COLORS.gray,
-              color: COLORS.black,
-              backgroundColor: COLORS.white
-            }}
-            value={filters.course}
-            onChange={(e) => setFilters({...filters, course: e.target.value})}
-          >
-            <option value="">جميع الدورات</option>
-            <option value="برمجة">برمجة</option>
-            <option value="تصميم">تصميم</option>
-            <option value="تسويق">تسويق</option>
-          </select>
-
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <CalendarIcon className="w-5 h-5 absolute right-3 top-3" style={{ color: COLORS.gray }} />
-              <input
-                type="date"
-                className="w-full pl-4 pr-10 py-3 rounded-lg border"
-                style={{ 
-                  borderColor: COLORS.gray,
-                  color: COLORS.black,
-                  backgroundColor: COLORS.white
-                }}
-                onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-              />
+            >
+              <svg 
+                className="w-6 h-6 mt-0.5 mr-2 flex-shrink-0" 
+                style={{ color: '#E2101E' }} 
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <p className="text-[#E2101E]">{error}</p>
             </div>
-            <div className="relative flex-1">
-              <CalendarIcon className="w-5 h-5 absolute right-3 top-3" style={{ color: COLORS.gray }} />
-              <input
-                type="date"
-                className="w-full pl-4 pr-10 py-3 rounded-lg border"
-                style={{ 
-                  borderColor: COLORS.gray,
-                  color: COLORS.black,
-                  backgroundColor: COLORS.white
-                }}
-                onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-              />
+          )}
+          
+          {/* رسالة النجاح */}
+          {successMessage && (
+            <div 
+              className="mb-6 p-4 rounded-lg border-l-4 flex items-start"
+              style={{ 
+                backgroundColor: 'rgba(0, 141, 203, 0.08)', 
+                borderColor: '#008DCB',
+                borderLeftWidth: '4px'
+              }}
+            >
+              <svg 
+                className="w-6 h-6 mt-0.5 mr-2 flex-shrink-0" 
+                style={{ color: '#008DCB' }} 
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <p className="text-[#008DCB]">{successMessage}</p>
             </div>
-          </div>
-
-          <select
-            className="py-3 px-4 rounded-lg border"
+          )}
+          
+          {/* نموذج إرسال الإشعار */}
+          <form 
+            onSubmit={handleSendNotification} 
+            className="mb-8 p-6 rounded-xl border"
             style={{ 
-              borderColor: COLORS.gray,
-              color: COLORS.black,
-              backgroundColor: COLORS.white
-            }}
-            value={filters.activity}
-            onChange={(e) => setFilters({...filters, activity: e.target.value})}
-          >
-            <option value="">جميع الحالات</option>
-            <option value="active">نشط</option>
-            <option value="inactive">غير نشط</option>
-          </select>
-        </div>
-      </section>
-
-      {/* جدول البيانات */}
-      <section className="rounded-xl shadow-lg overflow-hidden" style={{ backgroundColor: COLORS.white }}>
-        <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: COLORS.gray }}>
-          <h2 className="text-xl font-semibold flex items-center gap-2" style={{ color: COLORS.black }}>
-            <FunnelIcon className="w-6 h-6" style={{ color: COLORS.blue }} />
-            قائمة الطلاب
-          </h2>
-          <button
-            onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:shadow-md"
-            style={{ 
-              backgroundColor: COLORS.yellow,
-              color: COLORS.black
+              backgroundColor: '#FFFFFF', 
+              borderColor: 'rgba(153, 153, 153, 0.2)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
             }}
           >
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            تصدير البيانات
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr style={{ backgroundColor: COLORS.white }}>
-                <TableHeader label="الاسم" sortKey="name" />
-                <TableHeader label="الإيميل" sortKey="email" />
-                <TableHeader label="الدورات" sortKey="courses" />
-                <TableHeader label="تاريخ التسجيل" sortKey="registrationDate" />
-                <TableHeader label="آخر نشاط" sortKey="lastActivity" />
-                <th className="px-6 py-4 text-right" style={{ color: COLORS.black }}>اختيار</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y" style={{ borderColor: COLORS.gray }}>
-              {filteredStudents.map((student, index) => (
-                <tr 
-                  key={student.id}
-                  className="hover:bg-opacity-10 transition-colors"
+            <h2 className="text-xl font-bold mb-6 pb-2 border-b" style={{ borderColor: 'rgba(153, 153, 153, 0.3)', color: '#0D1012' }}>
+              إرسال إشعار جديد
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium mb-2" style={{ color: '#0D1012' }}>
+                  محتوى الرسالة *
+                </label>
+                <textarea
+                  id="message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all"
                   style={{ 
-                    backgroundColor: index % 2 === 0 ? COLORS.white : `${COLORS.gray}10`,
-                    borderColor: COLORS.gray
+                    borderColor: 'rgba(153, 153, 153, 0.5)',
+                    backgroundColor: '#FFFFFF',
+                    minHeight: '120px',
+                    color: '#0D1012',
+                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)',
+                    focusBorderColor: '#008DCB',
+                    focusRingColor: 'rgba(0, 141, 203, 0.2)'
                   }}
-                >
-                  <td className="px-6 py-4" style={{ color: COLORS.black }}>
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={student.avatar} 
-                        alt={student.name}
-                        className="w-10 h-10 rounded-full object-cover border"
-                        style={{ borderColor: COLORS.gray }}
-                      />
-                      <span>{student.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4" style={{ color: COLORS.black }}>{student.email}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-1 flex-wrap">
-                      {student.courses.map(course => (
-                        <span 
-                          key={course}
-                          className="px-3 py-1 rounded-full text-sm"
-                          style={{ 
-                            backgroundColor: `${COLORS.blue}20`,
-                            color: COLORS.blue
-                          }}
-                        >
-                          {course}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4" style={{ color: COLORS.black }}>
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="w-4 h-4" style={{ color: COLORS.gray }} />
-                      {student.registrationDate}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-sm ${
-                      student.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {student.status === 'active' ? 'نشط' : 'غير نشط'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
+                  placeholder="أدخل محتوى الإشعار هنا..."
+                ></textarea>
+              </div>
+              
+              <div>
+                <div className="mb-6">
+                  <label htmlFor="type" className="block text-sm font-medium mb-2" style={{ color: '#0D1012' }}>
+                    نوع الإشعار
+                  </label>
+                  <select
+                    id="type"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all appearance-none"
+                    style={{ 
+                      borderColor: 'rgba(153, 153, 153, 0.5)',
+                      backgroundColor: '#FFFFFF',
+                      color: '#0D1012',
+                      backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23999' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 0.75rem center',
+                      backgroundSize: '16px 12px'
+                    }}
+                  >
+                    <option value="general">عام</option>
+                    <option value="reminder">تذكير</option>
+                  </select>
+                </div>
+
+                <div className="flex items-start mb-4">
+                  <div className="flex items-center h-5">
                     <input
                       type="checkbox"
-                      checked={selectedRows.some(s => s.id === student.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedRows([...selectedRows, student]);
-                        } else {
-                          setSelectedRows(selectedRows.filter(s => s.id !== student.id));
-                        }
-                      }}
-                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      checked={sendEmail}
+                      onChange={(e) => setSendEmail(e.target.checked)}
+                      className="h-5 w-5 rounded border focus:ring-2 focus:ring-offset-1 transition-all"
                       style={{ 
-                        borderColor: COLORS.gray,
-                        color: COLORS.blue
+                        borderColor: 'rgba(153, 153, 153, 0.5)',
+                        focusRingColor: 'rgba(249, 208, 17, 0.4)',
+                        backgroundColor: sendEmail ? '#F9D011' : '#FFFFFF'
                       }}
                     />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                  </div>
+                  <div className="ml-3 text-sm">
+                    <label htmlFor="send-email" className="font-medium" style={{ color: '#0D1012' }}>
+                      إرسال البريد الإلكتروني
+                    </label>
+                    <p className="mt-1" style={{ color: 'rgba(13, 16, 18, 0.7)' }}>
+                      سيتم إرسال نسخة من الإشعار إلى بريد المستخدم
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-      {/* محرر الإيميلات */}
-      <section className="mt-8 p-6 rounded-xl shadow-lg" style={{ backgroundColor: COLORS.white }}>
-        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: COLORS.black }}>
-          <EnvelopeIcon className="w-6 h-6" style={{ color: COLORS.blue }} />
-          محرر الرسائل
-        </h3>
-        
-        <div className="relative">
-          <textarea
-            value={emailContent}
-            onChange={(e) => setEmailContent(e.target.value)}
-            placeholder="اكتب محتوى الرسالة هنا..."
-            className="w-full p-4 rounded-lg border focus:ring-2"
-            style={{
-              borderColor: COLORS.gray,
-              color: COLORS.black,
-              backgroundColor: COLORS.white
-            }}
-            maxLength={2000}
-          />
-          <div className="absolute bottom-4 left-4 text-sm" style={{ color: COLORS.gray }}>
-            {emailContent.length}/2000 حرف
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={handleSendEmails}
-            disabled={selectedRows.length === 0 || emailContent.length === 0}
-            className="px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all hover:scale-105"
-            style={{
-              background: `linear-gradient(135deg, ${COLORS.blue} 0%, ${COLORS.yellow} 100%)`,
-              color: COLORS.white,
-              boxShadow: `0 4px 6px ${COLORS.gray}30`,
-              opacity: selectedRows.length === 0 || emailContent.length === 0 ? 0.5 : 1
+            {/* حقل محتوى البريد الإلكتروني */}
+            {sendEmail && (
+              <div className="mb-6">
+                <label htmlFor="emailContent" className="block text-sm font-medium mb-2" style={{ color: '#0D1012' }}>
+                  محتوى البريد الإلكتروني *
+                </label>
+                <textarea
+                  id="emailContent"
+                  value={emailContent}
+                  onChange={(e) => setEmailContent(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all"
+                  style={{ 
+                    borderColor: 'rgba(153, 153, 153, 0.5)',
+                    backgroundColor: '#FFFFFF',
+                    minHeight: '120px',
+                    color: '#0D1012',
+                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)',
+                    focusBorderColor: '#008DCB',
+                    focusRingColor: 'rgba(0, 141, 203, 0.2)'
+                  }}
+                  placeholder="أدخل محتوى البريد الإلكتروني هنا..."
+                ></textarea>
+              </div>
+            )}
+            
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 py-3 px-4 rounded-lg" style={{ backgroundColor: 'rgba(249, 208, 17, 0.1)' }}>
+              <span className="text-sm font-medium" style={{ color: '#0D1012' }}>
+                عدد المستخدمين المختارين: 
+                <span className="font-bold ml-1" style={{ color: '#F9D011' }}>{selectedUsers.length}</span>
+              </span>
+              
+              <button
+                type="submit"
+                className="px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ 
+                  backgroundColor: '#008DCB',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 6px rgba(0, 141, 203, 0.3)',
+                  focusRingColor: 'rgba(0, 141, 203, 0.4)',
+                  minWidth: '160px'
+                }}
+              >
+                إرسال الإشعار
+              </button>
+            </div>
+          </form>
+          
+          {/* قائمة المستخدمين */}
+          <div 
+            className="p-6 rounded-xl border"
+            style={{ 
+              backgroundColor: '#FFFFFF', 
+              borderColor: 'rgba(153, 153, 153, 0.2)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
             }}
           >
-            <EnvelopeIcon className="w-5 h-5" />
-            إرسال الرسائل
-          </button>
+            <h2 className="text-xl font-bold mb-4 pb-2 border-b" style={{ borderColor: 'rgba(153, 153, 153, 0.3)', color: '#0D1012' }}>
+              قائمة المستخدمين (المصادق عليهم)
+            </h2>
+            
+            <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'rgba(153, 153, 153, 0.2)' }}>
+              <table className="min-w-full divide-y" style={{ color: '#0D1012', backgroundColor: '#FFFFFF' }}>
+                <thead>
+                  <tr style={{ backgroundColor: 'rgba(153, 153, 153, 0.05)' }}>
+                    <th className="px-6 py-3 text-left text-sm font-medium">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.length === users.length && users.length > 0}
+                          onChange={() => {
+                            if (selectedUsers.length === users.length) {
+                              setSelectedUsers([]);
+                            } else {
+                              setSelectedUsers(users.map(user => user.id));
+                            }
+                          }}
+                          className="h-5 w-5 rounded border focus:ring-2 focus:ring-offset-1 transition-all"
+                          style={{ 
+                            borderColor: 'rgba(153, 153, 153, 0.5)',
+                            backgroundColor: selectedUsers.length > 0 ? '#008DCB' : '#FFFFFF',
+                            focusRingColor: 'rgba(0, 141, 203, 0.2)'
+                          }}
+                        />
+                        <span className="ml-2">تحديد الكل</span>
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-medium">
+                      اسم المستخدم
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-medium">
+                      البريد الإلكتروني
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ backgroundColor: '#FFFFFF', color: '#0D1012' }}>
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="px-6 py-4 text-center text-sm" style={{ color: 'rgba(13, 16, 18, 0.7)' }}>
+                        لا يوجد مستخدمين
+                      </td>
+                    </tr>
+                  ) : (
+                    users.map((user) => (
+                      <tr 
+                        key={user.id} 
+                        className="transition-colors hover:bg-gray-50"
+                        style={{ backgroundColor: selectedUsers.includes(user.id) ? 'rgba(0, 141, 203, 0.03)' : '#FFFFFF' }}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.includes(user.id)}
+                            onChange={() => handleUserSelect(user.id)}
+                            className="h-5 w-5 rounded border focus:ring-2 focus:ring-offset-1 transition-all"
+                            style={{ 
+                              borderColor: 'rgba(153, 153, 153, 0.5)',
+                              backgroundColor: selectedUsers.includes(user.id) ? '#008DCB' : '#FFFFFF',
+                              focusRingColor: 'rgba(0, 141, 203, 0.2)'
+                            }}
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {user.username}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'rgba(13, 16, 18, 0.8)' }}>
+                          {user.email}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </section>
-
-      {/* التذييل */}
-      <footer className="mt-8 p-4 text-center rounded-xl" style={{ backgroundColor: COLORS.black }}>
-        <p className="text-sm" style={{ color: COLORS.white }}>© 2024 جميع الحقوق محفوظة</p>
-      </footer>
-
-      {/* الأنيميشن المخصصة */}
-      <style jsx global>{`
-        tr:hover {
-          background-color: ${COLORS.blue}08 !important;
-        }
-        
-        button:hover {
-          transform: translateY(-1px);
-          transition: all 0.2s ease;
-        }
-        
-        input, select, textarea {
-          transition: all 0.2s ease;
-        }
-      `}</style>
+      </div>
     </div>
   );
 };
 
-export default StudentMarketingDashboard;
+export default NotificationSystem;

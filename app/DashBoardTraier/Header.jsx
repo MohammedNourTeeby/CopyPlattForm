@@ -2,7 +2,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiBell, FiUser, FiMessageCircle } from 'react-icons/fi';
+import { FiBell, FiUser, FiMessageCircle, FiLogIn, FiUserPlus } from 'react-icons/fi';
 import List from './list';
 import Link from 'next/link';
 
@@ -21,6 +21,7 @@ export default function Header() {
   const [hasNotifications] = useState(true);
   const profileRef = useRef(null);
   const profileButtonRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   // تأثيرات الحركة المحسنة
   const menuVariants = {
@@ -87,61 +88,92 @@ export default function Header() {
               </motion.button>
             </Link>
             <motion.button
-  whileHover={{ scale: 1.05 }}
-  whileTap={{ scale: 0.95 }}
-  className="relative p-2 rounded-lg transition-all"
-  style={{ backgroundColor: colors.white, border: `1px solid ${colors.gray}` }}
-  onClick={() => setIsProfileOpen(!isProfileOpen)}
-  ref={profileButtonRef}
->
-  <FiUser size={26} style={{ color: colors.blue }} />
-  {hasNotifications && (
-    <span
-      className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full animate-pulse"
-      style={{ backgroundColor: colors.red }}
-    />
-  )}
-</motion.button>
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative p-2 rounded-lg transition-all"
+              style={{ backgroundColor: colors.white, border: `1px solid ${colors.gray}` }}
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              ref={profileButtonRef}
+            >
+              <FiUser size={26} style={{ color: colors.blue }} />
+              {hasNotifications && (
+                <span
+                  className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full animate-pulse"
+                  style={{ backgroundColor: colors.red }}
+                />
+              )}
+            </motion.button>
           </div>
 
-          {/* Authentication buttons */}
-          
+          {/* Authentication buttons - تم التطوير هنا */}
+          <div className="flex items-center gap-3">
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              className="relative"
+              onHoverStart={() => setIsHovered(true)}
+              onHoverEnd={() => setIsHovered(false)}
+            >
+              <Link 
+                href="/login"
+                className="flex items-center justify-center gap-2 px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-sm transition-all duration-300"
+                style={{
+                  backgroundColor: colors.yellow,
+                  color: colors.black,
+                  boxShadow: isHovered ? `0 4px 12px ${colors.yellow}80` : 'none'
+                }}
+              >
+                <FiLogIn className="text-lg" />
+                <span>سجل الدخول</span>
+              </Link>
+              
+              {/* خط تحت الزر عند التحويم */}
               <AnimatePresence>
-                {isProfileOpen && (
+                {isHovered && (
                   <motion.div
-                    ref={profileRef}
-                    variants={menuVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    className="absolute top-full right-0 mt-2 w-48 origin-top-right rounded-2xl bg-white p-2 shadow-lg"
-                    style={{ border: `1px solid ${colors.gray}` }}
-                  >
-                    <List colors={colors} onClose={() => setIsProfileOpen(false)} />
-                  </motion.div>
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    exit={{ width: 0 }}
+                    className="absolute bottom-0 left-0 h-1 rounded-full"
+                    style={{ backgroundColor: colors.blue }}
+                    transition={{ duration: 0.3 }}
+                  />
                 )}
               </AnimatePresence>
-              <Link 
-  href="/login"
-  className="inline-flex items-center justify-center px-6 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-gray-900 bg-yellow-500 hover:bg-yellow-600 transition-colors duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
->
-  <span className="ml-2"> أنشئ حساب \ سجل الدخول</span>
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    className="h-5 w-5 mr-2 rotate-180" 
-    viewBox="0 0 20 20" 
-    fill="currentColor"
-  >
-    <path 
-      fillRule="evenodd" 
-      d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" 
-      clipRule="evenodd" 
-    />
-  </svg>
-</Link>
+            </motion.div>
+            
+            <div className="hidden md:block h-6 w-px bg-gray-300 mx-1"></div>
+            
+            <Link 
+              href="/register"
+              className="hidden md:flex items-center justify-center gap-2 px-6 py-3 border border-transparent text-base font-medium rounded-xl transition-all duration-300"
+              style={{
+                backgroundColor: 'transparent',
+                color: colors.blue,
+                border: `1px solid ${colors.blue}`
+              }}
+            >
+              <FiUserPlus className="text-lg" />
+              <span>أنشئ حساب</span>
+            </Link>
+          </div>
+
+          {/* Profile menu */}
+          <AnimatePresence>
+            {isProfileOpen && (
+              <motion.div
+                ref={profileRef}
+                variants={menuVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="absolute top-full right-0 mt-2 w-48 origin-top-right rounded-2xl bg-white p-2 shadow-lg"
+                style={{ border: `1px solid ${colors.gray}` }}
+              >
+                <List colors={colors} onClose={() => setIsProfileOpen(false)} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-        
-  
       </div>
     </header>
   );

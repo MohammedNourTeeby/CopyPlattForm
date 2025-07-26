@@ -11,6 +11,7 @@ import {
   faFileInvoiceDollar,
   faFileAlt,
   faChevronDown,
+  faChevronUp,
   faCircle
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -63,16 +64,6 @@ const categories = [
     ]
   },
   {
-    title: 'إدارة التسويق',
-    icon: faChartLine,
-    items: [
-      { key: 'campaigns', label: 'الحملات التسويقية', icon: faChartLine },
-      { key: 'promotion', label: 'ظهور المدرب في الصفحة الأولى', icon: faUsers },
-      { key: 'WhiteLabel', label: 'الهوية البصرية', icon: faHandshake },
-      { key: 'domin', label: 'إدارة الدومين و الصفحات التسويقية', icon: faFileInvoiceDollar },
-    ]
-  },
-  {
     title: 'إدارة العملاء',
     icon: faUsers,
     items: [
@@ -91,14 +82,31 @@ const categories = [
 
 const Sidebar = ({ activeSection, setActiveSection }) => {
   const [expandedCategories, setExpandedCategories] = useState(['الرئيسية']);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+    setScrollProgress(progress);
+  };
 
   return (
     <aside 
-      className="w-72 fixed right-0 top-20 h-screen flex flex-col bg-white border-l"
-      style={{ borderColor: alpha(theme.gray, 0.1) }}
+      className="w-72 fixed right-0 top-0 h-screen flex flex-col z-30"
+      style={{
+        backgroundColor: theme.white,
+        borderLeft: `1px solid ${alpha(theme.gray, 0.1)}`,
+        boxShadow: `-2px 0 10px ${alpha(theme.gray, 0.1)}`
+      }}
     >
-      {/* شعار المنصة */}
-      <div className="px-6 py-4 border-b flex items-center justify-center bg-white">
+      {/* شعار مع تظليل خفيف */}
+      <div 
+        className="px-6 py-5 border-b flex items-center justify-center"
+        style={{
+          backgroundColor: alpha(theme.blue, 0.03),
+          borderBottom: `1px solid ${alpha(theme.blue, 0.1)}`
+        }}
+      >
         <img 
           src="/الاعتماد العربي.png" 
           alt="Logo"
@@ -106,9 +114,27 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
         />
       </div>
 
-      {/* محتوى القائمة */}
-      <nav className="flex-1 overflow-y-auto">
-        <ul className="space-y-3 p-4">
+      {/* شريط التقدم مع تظليل */}
+      <div 
+        className="h-1.5 relative overflow-hidden"
+        style={{ backgroundColor: alpha(theme.gray, 0.1) }}
+      >
+        <div 
+          className="h-full absolute top-0 right-0 transition-all duration-300"
+          style={{ 
+            width: `${scrollProgress}%`,
+            backgroundColor: theme.blue,
+            boxShadow: `0 0 8px ${alpha(theme.blue, 0.3)}`
+          }}
+        />
+      </div>
+
+      {/* محتوى القائمة مع تظليل وتصميم محسن */}
+      <nav 
+        className="flex-1 overflow-y-auto py-4"
+        onScroll={handleScroll}
+      >
+        <ul className="space-y-2 px-4">
           {categories.map((category) => (
             <li key={category.title}>
               <button
@@ -119,35 +145,53 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
                 )}
                 className={`
                   w-full flex justify-between items-center px-4 py-3
-                  rounded-lg transition-all duration-300
+                  rounded-xl transition-all duration-300
                   ${expandedCategories.includes(category.title) 
                     ? 'bg-blue-50' 
                     : 'bg-white hover:bg-gray-50'
                   }
                 `}
                 style={{
-                  border: `1px solid ${alpha(theme.gray, 0.1)}`
+                  border: `1px solid ${alpha(theme.gray, 0.1)}`,
+                  boxShadow: expandedCategories.includes(category.title) 
+                    ? `0 4px 6px ${alpha(theme.blue, 0.1)}`
+                    : '0 1px 2px rgba(0,0,0,0.05)'
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <FontAwesomeIcon 
-                    icon={category.icon}
-                    className="w-5 h-5"
+                  <div 
+                    className="p-2.5 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: expandedCategories.includes(category.title)
+                        ? alpha(theme.blue, 0.15)
+                        : alpha(theme.gray, 0.07)
+                    }}
+                  >
+                    <FontAwesomeIcon 
+                      icon={category.icon} 
+                      className="w-5 h-5 transition-colors"
+                      style={{
+                        color: expandedCategories.includes(category.title) 
+                          ? theme.blue 
+                          : theme.gray
+                      }}
+                    />
+                  </div>
+                  <span 
+                    className="font-semibold text-sm transition-colors"
                     style={{
                       color: expandedCategories.includes(category.title) 
                         ? theme.blue 
-                        : theme.gray
+                        : theme.black
                     }}
-                  />
-                  <span className="font-semibold text-sm">
+                  >
                     {category.title}
                   </span>
                 </div>
                 
-                <FontAwesomeIcon
-                  icon={faChevronDown}
-                  className={`w-4 h-4 transition-transform duration-300 
-                    ${expandedCategories.includes(category.title) ? 'rotate-180' : ''}`}
+                <FontAwesomeIcon 
+                  icon={expandedCategories.includes(category.title) ? faChevronUp : faChevronDown}
+                  className="w-4 h-4 transition-all duration-300"
                   style={{
                     color: expandedCategories.includes(category.title) ? theme.blue : theme.gray
                   }}
@@ -155,7 +199,7 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
               </button>
 
               <ul 
-                className={`ml-8 space-y-2 overflow-hidden transition-all
+                className={`ml-10 space-y-2 overflow-hidden transition-all
                   ${expandedCategories.includes(category.title) 
                     ? 'max-h-96 opacity-100 mt-2' 
                     : 'max-h-0 opacity-0'
@@ -169,24 +213,34 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
                         w-full text-right px-4 py-2.5 rounded-lg 
                         transition-all duration-300 flex items-center gap-3
                         ${activeSection === item.key 
-                          ? 'bg-blue-100' 
-                          : 'bg-white hover:bg-gray-50'
+                          ? 'bg-blue-100 border-blue-200' 
+                          : 'bg-white hover:bg-gray-50 border-gray-100'
                         }
                       `}
                       style={{
-                        border: `1px solid ${alpha(theme.gray, 0.1)}`
+                        border: `1px solid ${alpha(theme.gray, 0.1)}`,
+                        boxShadow: activeSection === item.key 
+                          ? `0 2px 4px ${alpha(theme.blue, 0.1)}`
+                          : 'none'
                       }}
                     >
                       <FontAwesomeIcon 
-                        icon={item.icon}
-                        className="w-4 h-4"
+                        icon={item.icon} 
+                        className="w-4 h-4 transition-colors"
                         style={{
                           color: activeSection === item.key 
                             ? theme.blue 
                             : theme.gray
                         }}
                       />
-                      <span className="flex-1 text-sm font-medium">
+                      <span 
+                        className="flex-1 text-sm font-medium pr-1 transition-colors"
+                        style={{
+                          color: activeSection === item.key 
+                            ? theme.blue 
+                            : theme.black
+                        }}
+                      >
                         {item.label}
                       </span>
                       
@@ -206,21 +260,46 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
         </ul>
       </nav>
 
-      {/* قسم الإشعارات */}
-      <div className="mx-4 mb-4 p-4 rounded-lg bg-yellow-50 border border-yellow-100">
+      {/* قسم الإشعارات مع تظليل وتصميم محسن */}
+      <div 
+        className="mx-4 mb-4 p-4 rounded-xl transition-all hover:scale-[1.01]"
+        style={{
+          backgroundColor: alpha(theme.yellow, 0.08),
+          border: `1px solid ${alpha(theme.yellow, 0.2)}`,
+          boxShadow: `0 4px 6px ${alpha(theme.yellow, 0.05)}`,
+          backdropFilter: 'blur(2px)'
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+          <div 
+            className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+            style={{
+              backgroundColor: alpha(theme.yellow, 0.15)
+            }}
+          >
             <FontAwesomeIcon 
               icon={faFileAlt} 
-              className="w-4 h-4"
+              className="w-5 h-5"
               style={{ color: theme.yellow }}
             />
           </div>
           <div>
-            <p className="text-xs font-semibold" style={{ color: theme.black }}>
+            <p 
+              className="text-sm font-semibold transition-colors"
+              style={{ 
+                color: theme.black,
+                textShadow: `0 1px 1px ${alpha(theme.white, 0.5)}`
+              }}
+            >
               3 تحديثات جديدة
             </p>
-            <p className="text-xs" style={{ color: theme.gray }}>
+            <p 
+              className="text-xs mt-1 transition-colors"
+              style={{ 
+                color: alpha(theme.black, 0.7),
+                textShadow: `0 1px 1px ${alpha(theme.white, 0.5)}`
+              }}
+            >
               آخر تحديث: ٢٤ ساعة
             </p>
           </div>

@@ -1,3 +1,4 @@
+"use client"
 import React from 'react'
 import Header from './Header'
 import WelcomMassage from './WelcomMassage'
@@ -17,8 +18,6 @@ function page() {
 <div className="px-0">
 <Courses/>
 </div>
-
-      <LearningGoals/>
       <PricingPlans/>
       <TestimonialsAndReport/>
       <PopularAndCaseStudy/>

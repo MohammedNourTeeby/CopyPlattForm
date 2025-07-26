@@ -11,6 +11,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { HiGlobe } from 'react-icons/hi';
+import { useDispatch } from 'react-redux';
 
 const COLORS = {
   primary: '#008DCB',
@@ -446,7 +447,8 @@ const Header = () => {
             </Link>
 
             <div className="relative">
-              <motion.button
+              <Link  href="/Navigation">
+               <motion.button
                 className="hidden md:block p-2.5 rounded-xl relative group"
                 style={{
                   backgroundColor: `${COLORS.white}15`,
@@ -468,6 +470,8 @@ const Header = () => {
                   }}
                 />
               </motion.button>
+              </Link>
+             
               <AnimatePresence>
                 {notificationsOpen && (
                   <motion.div

@@ -29,7 +29,7 @@ const toBase64 = (str) =>
   `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/courses`,
   {
     params: {
-      'filters[users_permissions_user][id]': user?.id,
+      'filters[users_permissions_user][documentId]': user?.documentId,
       populate: {
         coverImage: { // يجب أن يكون هيكل populate هكذا
           fields: ['url'],

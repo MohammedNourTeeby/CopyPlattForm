@@ -102,9 +102,11 @@ const Login = () => {
 
   const handleRedirectBasedOnRole = (role) => {
     const dashboardPaths = {
-      'PlattFormAdmin': '/DashBoardAdmin',
-      'Employee': '/DashBoardTraier',
-      'default': '/DashBoardTraier'
+      'PlattFormAdmin': '/DashBoardControl',
+      'Employee': '/DashBoardControl',
+      'assistant': '/DashBoardControl',
+      'Marketer': '/DashBoardControl',
+      'Authenticated': '/DashBoardTraier'
     };
 
     const path = dashboardPaths[role] || dashboardPaths.default;

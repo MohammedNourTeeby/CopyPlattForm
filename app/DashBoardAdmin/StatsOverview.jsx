@@ -2,88 +2,69 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const AssistantDashboard = () => {
+const StatsOverview = () => {
   // تعريف الحالات (states) لتخزين البيانات والإحصائيات
   const [stats, setStats] = useState({
     totalUsers: 0,
     usersWithCourses: 0,
     usersWithoutCourses: 0,
     totalCourses: 0,
-    totalTasks: 0,
-    tasksByStatus: { todo: 0, inProgress: 0, done: 0 },
-    tasksByPriority: { critical: 0, high: 0, medium: 0, low: 0 },
-    tasksByRoleType: { technician: 0, support: 0, management: 0, quality: 0 },
     loading: true,
     error: null
   });
 
   // وظيفة جلب البيانات من Strapi
- const fetchData = async () => {
-  try {
-    setStats(prev => ({ ...prev, loading: true, error: null }));
-    
-    const [usersResponse, coursesResponse, tasksResponse] = await Promise.all([
-      axios.get(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/users`),
-      axios.get(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/courses`),
-      axios.get(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/tasks`)
-    ]);
+  const fetchData = async () => {
+    try {
+      // تحديث الحالة إلى "جارٍ التحميل"
+      setStats(prev => ({ ...prev, loading: true, error: null }));
+      
+      // جلب المستخدمين من Strapi
+      const usersResponse = await axios.get(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/users`, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      // جلب الدورات من Strapi
+      const coursesResponse = await axios.get(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/courses`, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-    // استخراج البيانات بشكل آمن
-    const users = Array.isArray(usersResponse.data) ? usersResponse.data : [];
-    const courses = Array.isArray(coursesResponse.data) ? coursesResponse.data : [];
-    const tasks = Array.isArray(tasksResponse?.data?.data) ? tasksResponse.data.data : [];
+      // معالجة البيانات واستخراج الإحصائيات
+      const users = usersResponse.data;
+      const courses = coursesResponse.data;
 
-    // حساب الإحصائيات
-    const totalUsers = users.length;
-    const usersWithCourses = users.filter(user => 
-      user.courses && Array.isArray(user.courses) && user.courses.length > 0
-    ).length;
-    const usersWithoutCourses = totalUsers - usersWithCourses;
-    const totalCourses = courses.length;
-    const totalTasks = tasks.length;
+      // حساب الإحصائيات
+      const totalUsers = users.length;
+      const usersWithCourses = users.filter(user => 
+        user.courses && Array.isArray(user.courses) && user.courses.length > 0
+      ).length;
+      const usersWithoutCourses = totalUsers - usersWithCourses;
+      const totalCourses = courses.length;
 
-    const tasksByStatus = {
-      todo: tasks.filter(t => t.statu === 'todo').length,
-      inProgress: tasks.filter(t => t.statu === 'inProgress').length,
-      done: tasks.filter(t => t.statu === 'done').length
-    };
-
-    const tasksByPriority = {
-      critical: tasks.filter(t => t.priority === 'critical').length,
-      high: tasks.filter(t => t.priority === 'high').length,
-      medium: tasks.filter(t => t.priority === 'medium').length,
-      low: tasks.filter(t => t.priority === 'low').length
-    };
-
-    const tasksByRoleType = {
-      technician: tasks.filter(t => t.roleType === 'technician').length,
-      support: tasks.filter(t => t.roleType === 'support').length,
-      management: tasks.filter(t => t.roleType === 'management').length,
-      quality: tasks.filter(t => t.roleType === 'quality').length
-    };
-
-    // تحديث الحالة
-    setStats({
-      totalUsers,
-      usersWithCourses,
-      usersWithoutCourses,
-      totalCourses,
-      totalTasks,
-      tasksByStatus,
-      tasksByPriority,
-      tasksByRoleType,
-      loading: false,
-      error: null
-    });
-  } catch (error) {
-    console.error('فشل في جلب البيانات:', error);
-    setStats(prev => ({ 
-      ...prev, 
-      loading: false, 
-      error: 'فشل في تحميل الإحصائيات. يرجى المحاولة مرة أخرى لاحقًا.'
-    }));
-  }
-};
+      // تحديث الحالة بالإحصائيات المحسوبة
+      setStats({
+        totalUsers,
+        usersWithCourses,
+        usersWithoutCourses,
+        totalCourses,
+        loading: false,
+        error: null
+      });
+      
+    } catch (error) {
+      // التعامل مع الأخطاء
+      console.error('فشل في جلب البيانات:', error);
+      setStats(prev => ({ 
+        ...prev, 
+        loading: false, 
+        error: 'فشل في تحميل الإحصائيات. يرجى المحاولة مرة أخرى لاحقًا.'
+      }));
+    }
+  };
 
   // استدعاء وظيفة جلب البيانات عند تحميل المكون
   useEffect(() => {
@@ -95,9 +76,7 @@ const AssistantDashboard = () => {
     { name: 'إجمالي المستخدمين', value: stats.totalUsers },
     { name: 'مدربين بالدورات', value: stats.usersWithCourses },
     { name: 'طلاب بدون دورات', value: stats.usersWithoutCourses },
-    { name: 'إجمالي الدورات', value: stats.totalCourses },
-    { name: 'إجمالي المهام', value: stats.totalTasks },
-    { name: 'مهام منتهية', value: stats.tasksByStatus.done }
+    { name: 'إجمالي الدورات', value: stats.totalCourses }
   ];
 
   // عرض حالة التحميل
@@ -155,59 +134,35 @@ const AssistantDashboard = () => {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
     </svg>
   );
-
+  
   const CoursesIcon = (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
     </svg>
   );
-
+  
   const TrainerIcon = (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
     </svg>
   );
-
+  
   const StudentIcon = (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
     </svg>
   );
 
-  const TasksIcon = (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-    </svg>
-  );
-
-  const InProgressIcon = (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-    </svg>
-  );
-
-  const DoneIcon = (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-    </svg>
-  );
-
-  const TodoIcon = (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-    </svg>
-  );
-
+  // عرض المكون النهائي
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 text-center">
         <h1 className="text-3xl md:text-4xl font-bold text-[#0D1012] mb-2">لوحة تحكم الإحصائيات</h1>
         <p className="text-[#999999] max-w-2xl mx-auto">
-          نظرة عامة على إحصائيات المنصة التعليمية ومستخدميها والمهام. يتم تحديث البيانات تلقائيًا عند أي تغيير.
+          نظرة عامة على إحصائيات المنصة التعليمية ومستخدميها. يتم تحديث البيانات تلقائيًا عند أي تغيير.
         </p>
       </div>
-
-      {/* إحصائيات المستخدمين والدورات */}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard 
           title="إجمالي المستخدمين" 
@@ -239,39 +194,6 @@ const AssistantDashboard = () => {
         />
       </div>
 
-      {/* إحصائيات المهام */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard 
-          title="إجمالي المهام" 
-          value={stats.totalTasks} 
-          icon={TasksIcon}
-          color="#4A90E2" 
-          textColor="text-white" 
-        />
-        <StatCard 
-          title="المهام قيد الإنجاز" 
-          value={stats.tasksByStatus.inProgress} 
-          icon={InProgressIcon}
-          color="#F9D011" 
-          textColor="text-[#0D1012]" 
-        />
-        <StatCard 
-          title="المهام المنتهية" 
-          value={stats.tasksByStatus.done} 
-          icon={DoneIcon}
-          color="#48BB78" 
-          textColor="text-white" 
-        />
-        <StatCard 
-          title="المهام المعلقة" 
-          value={stats.tasksByStatus.todo} 
-          icon={TodoIcon}
-          color="#E2101E" 
-          textColor="text-white" 
-        />
-      </div>
-
-      {/* مخطط إحصائيات شامل */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#0D1012]">مخطط إحصائيات المنصة</h2>
@@ -287,6 +209,7 @@ const AssistantDashboard = () => {
             </button>
           </div>
         </div>
+        
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
@@ -346,98 +269,13 @@ const AssistantDashboard = () => {
         </div>
       </div>
 
-      {/* توزيع المهام */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-[#0D1012] mb-4">توزيع المهام حسب الحالة</h2>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={[
-                  { name: 'قيد الإنجاز', value: stats.tasksByStatus.inProgress },
-                  { name: 'منتهية', value: stats.tasksByStatus.done },
-                  { name: 'معلقة', value: stats.tasksByStatus.todo }
-                ]}
-                layout="vertical"
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#EEEEEE" />
-                <XAxis type="number" tick={{ fill: '#999999' }} axisLine={false} tickLine={false} />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  tick={{ fill: '#0D1012' }} 
-                  axisLine={false} 
-                  tickLine={false} 
-                  width={100}
-                />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #EEEEEE' }}
-                  itemStyle={{ color: '#0D1012' }}
-                  labelStyle={{ color: '#4A90E2', fontWeight: 'bold' }}
-                />
-                <Bar dataKey="value" fill="#4A90E2" radius={[0, 4, 4, 0]} barSize={30}>
-                  {Object.entries(stats.tasksByStatus).map(([key, value], index) => (
-                    <text
-                      key={key}
-                      x={value + 10}
-                      y={index * 30 + 15}
-                      textAnchor="start"
-                      dominantBaseline="middle"
-                      fill="#0D1012"
-                      fontSize={12}
-                      fontWeight={500}
-                    >
-                      {value}
-                    </text>
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-[#0D1012] mb-4">توزيع المهام حسب الأولوية والنوع</h2>
-          <div className="space-y-4">
-            <h3 className="font-semibold text-[#0D1012]">حسب الأولوية</h3>
-            {Object.entries(stats.tasksByPriority).map(([priority, count]) => (
-              <div key={priority} className="flex items-center">
-                <span className="w-24 text-sm text-[#0D1012] capitalize">{priority}</span>
-                <div className="flex-1 bg-[#F0F0F0] rounded-full h-2.5 overflow-hidden mx-4">
-                  <div 
-                    className="h-full bg-[#4A90E2] rounded-full"
-                    style={{ width: `${(count / stats.totalTasks) * 100}%` }}
-                  ></div>
-                </div>
-                <span className="text-sm text-[#0D1012] w-8">{count}</span>
-              </div>
-            ))}
-            
-            <h3 className="font-semibold text-[#0D1012] mt-6">حسب النوع</h3>
-            {Object.entries(stats.tasksByRoleType).map(([role, count]) => (
-              <div key={role} className="flex items-center">
-                <span className="w-24 text-sm text-[#0D1012] capitalize">{role}</span>
-                <div className="flex-1 bg-[#F0F0F0] rounded-full h-2.5 overflow-hidden mx-4">
-                  <div 
-                    className="h-full bg-[#4A90E2] rounded-full"
-                    style={{ width: `${(count / stats.totalTasks) * 100}%` }}
-                  ></div>
-                </div>
-                <span className="text-sm text-[#0D1012] w-8">{count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* توزيع المستخدمين والخلاصة */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-[#0D1012]">توزيع المستخدمين</h2>
             <span className="text-sm text-[#999999]">آخر تحديث: الآن</span>
           </div>
+          
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center">
@@ -449,6 +287,7 @@ const AssistantDashboard = () => {
                 <span className="text-[#999999]">({Math.round((stats.usersWithCourses / stats.totalUsers) * 100)}%)</span>
               </div>
             </div>
+            
             <div className="flex justify-between items-center">
               <div className="flex items-center">
                 <div className="w-3 h-3 rounded-full bg-[#E2101E] mr-2"></div>
@@ -460,6 +299,7 @@ const AssistantDashboard = () => {
               </div>
             </div>
           </div>
+          
           <div className="mt-6 bg-[#F9F9F9] rounded-lg p-4">
             <div className="flex justify-between mb-2">
               <span className="text-sm text-[#0D1012] font-medium">نسبة المدربين</span>
@@ -473,6 +313,7 @@ const AssistantDashboard = () => {
             </div>
           </div>
         </div>
+        
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-[#0D1012]">ملخص المنصة</h2>
@@ -482,6 +323,7 @@ const AssistantDashboard = () => {
               </svg>
             </div>
           </div>
+          
           <div className="space-y-4">
             <div className="flex justify-between items-center p-3 bg-[#F9F9F9] rounded-lg">
               <span className="text-[#0D1012]">متوسط الدورات لكل مدرب</span>
@@ -489,21 +331,18 @@ const AssistantDashboard = () => {
                 {stats.usersWithCourses > 0 ? (stats.totalCourses / stats.usersWithCourses).toFixed(1) : 0}
               </span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-[#F9F9F9] rounded-lg">
-              <span className="text-[#0D1012]">متوسط المهام لكل مستخدم</span>
-              <span className="font-medium text-[#0D1012]">
-                {stats.totalUsers > 0 ? (stats.totalTasks / stats.totalUsers).toFixed(1) : 0}
-              </span>
-            </div>
+            
             <div className="flex justify-between items-center p-3 bg-[#F9F9F9] rounded-lg">
               <span className="text-[#0D1012]">نسبة النمو الشهرية</span>
               <span className="font-medium text-[#0D1012]">+12.5%</span>
             </div>
+            
             <div className="flex justify-between items-center p-3 bg-[#F9F9F9] rounded-lg">
               <span className="text-[#0D1012]">المستخدمون النشطون</span>
               <span className="font-medium text-[#0D1012]">78%</span>
             </div>
           </div>
+          
           <button className="mt-6 w-full py-3 bg-[#008DCB] text-white rounded-lg font-medium hover:bg-[#0077B6] transition-colors duration-300 flex items-center justify-center">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -516,4 +355,4 @@ const AssistantDashboard = () => {
   );
 };
 
-export default AssistantDashboard;
+export default StatsOverview;
